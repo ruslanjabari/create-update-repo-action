@@ -2,6 +2,25 @@ const core = require("@actions/core");
 const github = require("@actions/github");
 const axios = require("axios");
 
+const delay = (ms) => new Promise((res) => setTimeout(res, ms));
+
+async function addCollaboratorWithRetry(config) {
+  let retries = 3;
+  while (retries > 0) {
+    try {
+      await axios(config);
+      return;
+    } catch (error) {
+      console.log(`Attempt to add collaborator failed: ${error.message}`);
+      retries--;
+      if (retries === 0) {
+        throw error;
+      }
+      await delay(5000); // Wait before retrying
+    }
+  }
+}
+
 async function run() {
   try {
     const ghToken = core.getInput("org-admin-token");
@@ -34,10 +53,18 @@ async function run() {
       `https://github.com/${targetOrgName}/${issueTitle}`
     );
 
-    // Step 2: Add the issue creator as a collaborator
+    await delay(5000); // Wait for the repo to be created
+    console.log(`Target organization: ${targetOrgName}`);
+    console.log(`Repository name: ${issueTitle}`);
+    console.log(`Collaborator username: ${issueCreator}`);
+
+    // Step 3: Add the issue creator as a collaborator
+    const addCollaboratorURL = `https://api.github.com/repos/${targetOrgName}/${issueTitle}/collaborators/${issueCreator}`;
+    console.log("Adding collaborator with URL:", addCollaboratorURL);
+
     const addCollaboratorConfig = {
       method: "put",
-      url: `https://api.github.com/repos/${targetOrgName}/${issueTitle}/collaborators/${issueCreator}`,
+      url: addCollaboratorURL,
       headers: {
         Accept: "application/vnd.github.v3+json",
         Authorization: `token ${ghToken}`,
@@ -46,13 +73,16 @@ async function run() {
       data: { permission: "push" },
     };
 
-    await axios(addCollaboratorConfig);
+    await addCollaboratorWithRetry(addCollaboratorConfig);
     console.log(`Added ${issueCreator} as a collaborator to ${issueTitle}`);
 
-    // Step 3: Close the issue
+    // Step 4: Close the issue
+    const closeIssueURL = `https://api.github.com/repos/${targetOrgName}/${github.context.repo.repo}/issues/${github.context.issue.number}`;
+    console.log("Closing issue with URL:", closeIssueURL);
+
     const closeIssueConfig = {
       method: "patch",
-      url: `https://api.github.com/repos/${targetOrgName}/${github.context.repo.repo}/issues/${github.context.issue.number}`,
+      url: closeIssueURL,
       headers: {
         Accept: "application/vnd.github.v3+json",
         Authorization: `token ${ghToken}`,
