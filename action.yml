@@ -1,0 +1,15 @@
+name: "Create Repository and Setup Collaborator"
+description: "Creates a private repository based on the issue title, adds the issue creator as a collaborator, and closes the issue."
+
+inputs:
+  org-admin-token:
+    description: "GitHub Token with access to the organization"
+    required: true
+
+runs:
+  using: "node12"
+  main: "index.js"
+
+outputs:
+  repo-url:
+    description: "The URL of the created repository"
