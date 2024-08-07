@@ -70,7 +70,7 @@ async function run() {
         Authorization: `token ${ghToken}`,
         "Content-Type": "application/json",
       },
-      data: { permission: "push" },
+      data: { permission: "admin" },
     };
 
     await addCollaboratorWithRetry(addCollaboratorConfig);
